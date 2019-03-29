@@ -14,6 +14,7 @@ export function resetExifOrientation(srcBase64: string): Promise<string> {
 export function transformBase64BasedOnExifRotation(srcBase64: string, exifRotation: number): Promise<string> {
     return new Promise((resolve, reject) => {
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.onload = function () {
             const width = img.width;
             const height = img.height;

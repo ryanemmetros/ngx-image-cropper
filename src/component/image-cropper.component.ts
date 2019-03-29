@@ -59,6 +59,7 @@ export class ImageCropperComponent implements OnChanges {
     @Input() aspectRatio = 1;
     @Input() resizeToWidth = 0;
     @Input() cropperMinWidth = 0;
+    @Input() cropperMinHeight = 0;
     @Input() roundCropper = false;
     @Input() onlyScaleDown = false;
     @Input() imageQuality = 92;
@@ -154,6 +155,7 @@ export class ImageCropperComponent implements OnChanges {
         this.originalBase64 = imageBase64;
         this.safeImgDataUrl = this.sanitizer.bypassSecurityTrustResourceUrl(imageBase64);
         this.originalImage = new Image();
+        this.originalImage.crossOrigin = "anonymous";
         this.originalImage.onload = () => {
             this.originalSize.width = this.originalImage.width;
             this.originalSize.height = this.originalImage.height;
@@ -292,7 +294,7 @@ export class ImageCropperComponent implements OnChanges {
             this.cropperScaledMinWidth = Math.max(20, this.cropperMinWidth / this.originalImage.width * this.maxSize.width);
             this.cropperScaledMinHeight = this.maintainAspectRatio
                 ? Math.max(20, this.cropperScaledMinWidth / this.aspectRatio)
-                : 20;
+                : this.cropperMinHeight / this.originalImage.height * this.maxSize.height;
         } else {
             this.cropperScaledMinWidth = 20;
             this.cropperScaledMinHeight = 20;
