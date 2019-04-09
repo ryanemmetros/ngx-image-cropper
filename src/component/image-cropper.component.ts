@@ -346,6 +346,7 @@ export class ImageCropperComponent implements OnChanges {
     }
 
     zoomScrollWheel(event: WheelEvent) {
+        event.preventDefault();
         const scaleIncrement = (event.deltaY < 0 ? 0.1 : -0.1)
 
         if ((this.imageScale + scaleIncrement) < 1) {
@@ -393,15 +394,17 @@ export class ImageCropperComponent implements OnChanges {
         var box = element.nativeElement.getBoundingClientRect();
         let newScaledWidth: number = element.nativeElement.width * this.imageScale;
         let newScaledHeight: number = element.nativeElement.height * this.imageScale;
+        let translateXScaleDifference: number = (this.imageTranslateX * this.imageScale) - (this.imageTranslateX * (this.imageScale + -(scaleIncrement)));
+        let translateYScaleDifference: number = (this.imageTranslateY * this.imageScale) - (this.imageTranslateY * (this.imageScale + -(scaleIncrement)));
 
         let scaledOffsetWidthChange = newScaledWidth - box.width;
         let scaledOffsetHeightChange = newScaledHeight - box.height;
 
         return {
-          left: (box.left - (scaledOffsetWidthChange / 2)) + (window.pageXOffset - document.documentElement.clientLeft),
-          top: (box.top - (scaledOffsetHeightChange / 2)) + (window.pageYOffset - document.documentElement.clientTop),
-          right: (box.right + (scaledOffsetWidthChange / 2)),
-          bottom: (box.bottom + (scaledOffsetHeightChange / 2)),
+          left: (box.left - (scaledOffsetWidthChange / 2)) + (window.pageXOffset - document.documentElement.clientLeft) + translateXScaleDifference,
+          top: (box.top - (scaledOffsetHeightChange / 2)) + (window.pageYOffset - document.documentElement.clientTop) + translateYScaleDifference,
+          right: (box.right + (scaledOffsetWidthChange / 2)) + translateXScaleDifference,
+          bottom: (box.bottom + (scaledOffsetHeightChange / 2)) + translateYScaleDifference,
           width: newScaledWidth,
           height: newScaledHeight
         };
@@ -622,20 +625,6 @@ export class ImageCropperComponent implements OnChanges {
             x2: ((Math.min(Math.round(this.cropper.x2 * ratio), this.originalSize.width) / this.imageScale) + widthPositionChange - (this.imageTranslateX * ratio)),
             y2: ((Math.min(Math.round(this.cropper.y2  * ratio), this.originalSize.height) / this.imageScale) + heightPositionChange - (this.imageTranslateY * ratio))
         }
-
-        /*
-const sourceImageElement = this.sourceImage.nativeElement;
-        const ratio = this.originalSize.width / sourceImageElement.offsetWidth;
-        const widthPositionChange = this.imageScale > 1 ? ((this.sourceImage.nativeElement.offsetWidth * this.imageScale) - (this.sourceImage.nativeElement.offsetWidth)) / 2 : 0;
-        const heightPositionChange = this.imageScale > 1 ? ((this.sourceImage.nativeElement.offsetHeight * this.imageScale) - (this.sourceImage.nativeElement.offsetHeight)) / 2 : 0;
-
-        return {
-            x1: Math.round(this.cropper.x1 * ratio) + widthPositionChange - (this.imageTranslateX * this.imageScale),
-            y1: Math.round(this.cropper.y1 * ratio) + heightPositionChange - (this.imageTranslateY * this.imageScale),
-            x2: Math.min(Math.round(this.cropper.x2 * ratio), this.originalSize.width) - widthPositionChange - (this.imageTranslateX * this.imageScale),
-            y2: Math.min(Math.round(this.cropper.y2  * ratio), this.originalSize.height) - heightPositionChange - (this.imageTranslateY * this.imageScale)
-        }
-        */
     }
 
     private cropToOutputType(outputType: OutputType, cropCanvas: HTMLCanvasElement, output: ImageCroppedEvent): ImageCroppedEvent | Promise<ImageCroppedEvent> {
