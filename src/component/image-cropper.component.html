@@ -1,11 +1,15 @@
 <div>
-    <img
-        #sourceImage
-        class="source-image"
-        [src]="safeImgDataUrl"
-        [style.visibility]="imageVisible ? 'visible' : 'hidden'"
-        (load)="imageLoadedInView()"
-    />
+    <!-- <div 
+    style="display: inline-flex;max-height: 100%;max-width: 100%;"> -->
+                <img
+                        #sourceImage
+                        class="source-image"
+                        [src]="safeImgDataUrl"
+                        [style.visibility]="imageVisible ? 'visible' : 'hidden'"
+                        [style.transform]="imageTransform"
+                        (load)="imageLoadedInView()"
+                />
+    <!-- </div> -->
     <div class="cropper"
          *ngIf="imageVisible"
          [class.rounded]="roundCropper"
@@ -15,6 +19,7 @@
          [style.height.px]="cropper.y2 - cropper.y1"
          [style.margin-left]="alignImage === 'center' ? marginLeft : null"
          [style.visibility]="imageVisible ? 'visible' : 'hidden'"
+         (wheel)="zoomScrollWheel($event)"
     >
         <div
                 (mousedown)="startMove($event, 'move')"
@@ -73,5 +78,16 @@
                 (mousedown)="startMove($event, 'resize', 'left')"
                 (touchstart)="startMove($event, 'resize', 'left')"
         ></span>
+    </div>
+    <div #zoomWindow class="zoomView"
+         *ngIf="imageVisible"
+         [style.top.px]="0"
+         [style.left.px]="0"
+         [style.width.px]="maxSize.width"
+         [style.height.px]="maxSize.height"
+         [style.margin-left]="alignImage === 'center' ? marginLeft : null"
+         [style.visibility]="imageVisible ? 'visible' : 'hidden'"
+         (wheel)="zoomScrollWheel($event)"
+    >
     </div>
 </div>

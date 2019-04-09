@@ -31,6 +31,7 @@
         outline-width: 100vw;
         outline-style: solid;
         touch-action: none;
+        z-index: 10;
 
         @media (orientation: portrait) {
             outline-width: 100vh;
@@ -164,5 +165,15 @@
                 border-radius: 100%;
             }
         }
+    }
+
+    .zoomView {
+        position: absolute;
+        display: flex;
+        background: transparent;
+        outline-color: rgba(245,245,245,1);
+        outline-width: 100vw;
+        outline-style: solid;
+        touch-action: none;
     }
 }
