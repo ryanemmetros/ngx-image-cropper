@@ -6,7 +6,6 @@ import { DomSanitizer, SafeUrl, SafeStyle } from '@angular/platform-browser';
 import { MoveStart, Dimensions, CropperPosition, ImageCroppedEvent, ElementPosition } from '../interfaces';
 import { resetExifOrientation, transformBase64BasedOnExifRotation } from '../utils/exif.utils';
 import { resizeCanvas } from '../utils/resize.utils';
-import { interval } from 'rxjs';
 
 export type OutputType = 'base64' | 'file' | 'both';
 
@@ -25,6 +24,9 @@ export class ImageCropperComponent implements OnChanges {
     private cropperScaledMinWidth = 20;
     private cropperScaledMinHeight = 20;
     
+    private pinchActive: boolean = false
+    private pinchZoomInitialScale: number = 1;
+
     private imageScale = 1;
     private imageTranslateX = 0;
     private imageTranslateY = 0;
@@ -222,7 +224,30 @@ export class ImageCropperComponent implements OnChanges {
         this.transformBase64(4);
     }
 
+    onPinch(evt: any) {
+        if (this.pinchActive) {
+            // do the actual scaling of the image, call function to scale
+            this.zoomImage(true, this.pinchZoomInitialScale * evt.scale, evt.center.x, evt.center.y);
+        }
+    }
+
+    onPinchStart(evt: any) {
+        // keep track of if we are in a pinch currently
+        this.pinchActive = true;
+
+        // set my image scale in variable before we apply pinch scaling (needed for further pinch calcs)
+        this.pinchZoomInitialScale = this.imageScale;
+    }
+  
+    onPinchEnd(evt: any) {
+        // set that we have ended pinching
+        this.pinchActive = false;
+        this.pinchZoomInitialScale = 1;
+    }
+
     reset() {
+        this.pinchZoomInitialScale = 1;
+        this.pinchActive = false;
         this.imageScale = 1;
         this.imageTranslateX = 0;
         this.imageTranslateY = 0;
@@ -363,35 +388,35 @@ export class ImageCropperComponent implements OnChanges {
 
     zoomScrollWheel(event: WheelEvent) {
         event.preventDefault();
-        const scaleIncrement = (event.deltaY < 0 ? 0.1 : -0.1)
+        const isZoomIn = (event.deltaY < 0 ? true : false);
+        const scaleIncrement = (event.deltaY < 0 ? 0.1 : -0.1);
 
-        if ((this.imageScale + scaleIncrement) < 1) {
+        this.zoomImage(isZoomIn, this.imageScale + scaleIncrement, event.pageX, event.pageY);
+    }
+
+    private zoomImage(zoomIn: boolean, newScale: number, zoomPageOriginX: number, zoomPageOriginY: number) {
+        if (newScale < 1) {
             this.imageTranslateX = 0;
             this.imageTranslateY = 0;
             return;
-        } else if ((this.imageScale + scaleIncrement) == 1) {
+        } else if (newScale == 1) {
             this.imageTranslateX = 0;
             this.imageTranslateY = 0;
         }
-
-        this.imageScale = parseFloat((this.imageScale + scaleIncrement).toFixed(14));
     
-        const imageOffset = this.getScaledOffsetInfo(this.sourceImage, scaleIncrement);
+        const imageOffset = this.getScaledOffsetInfo(this.sourceImage, this.imageScale, newScale);
         const zoomWindowOffset = this.getOffsetInfo(this.zoomWindow);
-
-        //console.log(`New scaled Image offset info  - top:${imageOffset.top}    right:${imageOffset.right}     bottom:${imageOffset.bottom}    left:${imageOffset.left}    width:${imageOffset.width}    height:${imageOffset.height}`);
-        //console.log(`Window - top:${zoomWindowOffset.top}    right:${zoomWindowOffset.right}     bottom:${zoomWindowOffset.bottom}    left:${zoomWindowOffset.left}`);
-
-        //                      (click x co-ord - top left corner x coord of image) - 1/2 image width to give click difference from mid image (0, 0)
-        const zoomX: number = (event.pageX - zoomWindowOffset.left) - (zoomWindowOffset.width / 2);
-        const zoomY: number = (zoomWindowOffset.height / 2) - (event.pageY - zoomWindowOffset.top);
+        
+        const zoomX: number = (zoomPageOriginX - zoomWindowOffset.left) - (zoomWindowOffset.width / 2);
+        const zoomY: number = (zoomWindowOffset.height / 2) - (zoomPageOriginY - zoomWindowOffset.top);
 
         // make sure that the new position with shift will not move passed min top/bottom/right/left
         // if it does only set it to translate the amount to reach top/bottom/right/left of zoom window
-        const translationAmount = this.getTranslationAmounts(zoomWindowOffset, imageOffset, zoomX, zoomY, scaleIncrement);
+        const translationAmount = this.getTranslationAmounts(zoomWindowOffset, imageOffset, zoomX, zoomY, zoomIn);
 
-        this.imageTranslateX += (translationAmount.X / this.imageScale);
-        this.imageTranslateY += (translationAmount.Y / this.imageScale);
+        this.imageScale = parseFloat((newScale).toFixed(14));
+        this.imageTranslateX += (translationAmount.X / newScale);
+        this.imageTranslateY += (translationAmount.Y / newScale);
     }
 
     private getOffsetInfo(element: ElementRef) : ElementPosition{
@@ -406,12 +431,12 @@ export class ImageCropperComponent implements OnChanges {
         };
     }
 
-    private getScaledOffsetInfo(element: ElementRef, scaleIncrement: number) : ElementPosition{
+    private getScaledOffsetInfo(element: ElementRef, oldScale: number, newScale: number) : ElementPosition{
         var box = element.nativeElement.getBoundingClientRect();
-        let newScaledWidth: number = element.nativeElement.width * this.imageScale;
-        let newScaledHeight: number = element.nativeElement.height * this.imageScale;
-        let translateXScaleDifference: number = (this.imageTranslateX * this.imageScale) - (this.imageTranslateX * (this.imageScale + -(scaleIncrement)));
-        let translateYScaleDifference: number = (this.imageTranslateY * this.imageScale) - (this.imageTranslateY * (this.imageScale + -(scaleIncrement)));
+        let newScaledWidth: number = element.nativeElement.width * newScale;
+        let newScaledHeight: number = element.nativeElement.height * newScale;
+        let translateXScaleDifference: number = (this.imageTranslateX * newScale) - (this.imageTranslateX * oldScale);
+        let translateYScaleDifference: number = (this.imageTranslateY * newScale) - (this.imageTranslateY * oldScale);
 
         let scaledOffsetWidthChange = newScaledWidth - box.width;
         let scaledOffsetHeightChange = newScaledHeight - box.height;
@@ -426,10 +451,10 @@ export class ImageCropperComponent implements OnChanges {
         };
     }
 
-    getTranslationAmounts(parentElement: ElementPosition, childElement: ElementPosition, zoomPosX: number, zoomPosY: number, scaleIncrement: number) {
+    getTranslationAmounts(parentElement: ElementPosition, childElement: ElementPosition, zoomPosX: number, zoomPosY: number, isZoomIn: boolean) {
         let translationAmounts = { X: 0, Y: 0 };
-        let translateX = Math.ceil(zoomPosX / 10) * (scaleIncrement > 0 ? -1 : 1);
-        let translateY = Math.ceil(zoomPosY / 10) * (scaleIncrement > 0 ? 1 : -1);
+        let translateX = Math.ceil(zoomPosX / 10) * (isZoomIn ? -1 : 1);
+        let translateY = Math.ceil(zoomPosY / 10) * (isZoomIn ? 1 : -1);
 
         // check the amount that the child would translate against top/bottom/right/left to make sure it does not go passed min
         // if it does then set the translate to be 

@@ -1,15 +1,12 @@
 <div>
-    <!-- <div 
-    style="display: inline-flex;max-height: 100%;max-width: 100%;"> -->
-                <img
-                        #sourceImage
-                        class="source-image"
-                        [src]="safeImgDataUrl"
-                        [style.visibility]="imageVisible ? 'visible' : 'hidden'"
-                        [style.transform]="imageTransform"
-                        (load)="imageLoadedInView()"
-                />
-    <!-- </div> -->
+    <img
+        #sourceImage
+        class="source-image"
+        [src]="safeImgDataUrl"
+        [style.visibility]="imageVisible ? 'visible' : 'hidden'"
+        [style.transform]="imageTransform"
+        (load)="imageLoadedInView()"
+    />
     <div class="cropper"
          *ngIf="imageVisible"
          [class.rounded]="roundCropper"
@@ -20,6 +17,9 @@
          [style.margin-left]="alignImage === 'center' ? marginLeft : null"
          [style.visibility]="imageVisible ? 'visible' : 'hidden'"
          (wheel)="zoomScrollWheel($event)"
+         (pinchstart)="onPinchStart($event)"
+         (pinchend)="onPinchEnd($event)"
+         (pinch)="onPinch($event)"
     >
         <div
                 (mousedown)="startMove($event, 'move')"
@@ -88,6 +88,9 @@
          [style.margin-left]="alignImage === 'center' ? marginLeft : null"
          [style.visibility]="imageVisible ? 'visible' : 'hidden'"
          (wheel)="zoomScrollWheel($event)"
+         (pinchstart)="onPinchStart($event)"
+         (pinchend)="onPinchEnd($event)"
+         (pinch)="onPinch($event)"
     >
     </div>
 </div>
