@@ -23,6 +23,8 @@ export class ImageCropperComponent implements OnChanges {
     private setImageMaxSizeRetries = 0;
     private cropperScaledMinWidth = 20;
     private cropperScaledMinHeight = 20;
+    private cropperScaledMaxWidth:number = 0;
+    private cropperScaledMaxHeight:number = 0;
     
     private pinchActive: boolean = false
     private pinchZoomInitialScale: number = 1;
@@ -72,6 +74,8 @@ export class ImageCropperComponent implements OnChanges {
     @Input() resizeToWidth = 0;
     @Input() cropperMinWidth = 0;
     @Input() cropperMinHeight = 0;
+    @Input() cropperMaxWidth = 0;
+    @Input() cropperMaxHeight = 0;
     @Input() roundCropper = false;
     @Input() onlyScaleDown = false;
     @Input() imageQuality = 92;
@@ -272,22 +276,24 @@ export class ImageCropperComponent implements OnChanges {
 
     private resetCropperPosition(): void {
         const sourceImageElement = this.sourceImage.nativeElement;
+        const width = this.cropperMaxWidth ? Math.min(this.cropperScaledMaxWidth, sourceImageElement.offsetWidth) : sourceImageElement.offsetWidth;
+        const height = this.cropperMaxHeight ? Math.min(this.cropperScaledMaxHeight, sourceImageElement.offsetHeight) :sourceImageElement.offsetHeight;
         if (!this.maintainAspectRatio) {
             this.cropper.x1 = 0;
-            this.cropper.x2 = sourceImageElement.offsetWidth;
+            this.cropper.x2 = width;
             this.cropper.y1 = 0;
-            this.cropper.y2 = sourceImageElement.offsetHeight;
+            this.cropper.y2 = height;
         } else if (sourceImageElement.offsetWidth / this.aspectRatio < sourceImageElement.offsetHeight) {
             this.cropper.x1 = 0;
-            this.cropper.x2 = sourceImageElement.offsetWidth;
-            const cropperHeight = sourceImageElement.offsetWidth / this.aspectRatio;
+            this.cropper.x2 = width;
+            const cropperHeight = width / this.aspectRatio;
             this.cropper.y1 = (sourceImageElement.offsetHeight - cropperHeight) / 2;
             this.cropper.y2 = this.cropper.y1 + cropperHeight;
         } else {
             this.cropper.y1 = 0;
-            this.cropper.y2 = sourceImageElement.offsetHeight;
-            const cropperWidth = sourceImageElement.offsetHeight * this.aspectRatio;
-            this.cropper.x1 = (sourceImageElement.offsetWidth - cropperWidth) / 2;
+            this.cropper.y2 = height;
+            const cropperWidth = height * this.aspectRatio;
+            this.cropper.x1 = (width - cropperWidth) / 2;
             this.cropper.x2 = this.cropper.x1 + cropperWidth;
         }
         this.doAutoCrop();
@@ -340,21 +346,12 @@ export class ImageCropperComponent implements OnChanges {
             this.cropperScaledMinWidth = 20;
             this.cropperScaledMinHeight = 20;
         }
-    }
 
-    private setCropperScaledMinWidth(): void {
-        this.cropperScaledMinWidth = this.cropperMinWidth > 0
-            ? Math.max(20, this.cropperMinWidth / this.originalImage.width * this.maxSize.width)
-            : 20;
-    }
-
-    private setCropperScaledMinHeight(): void {
-        if (this.maintainAspectRatio) {
-            this.cropperScaledMinHeight = Math.max(20, this.cropperScaledMinWidth / this.aspectRatio)
-        } else if (this.cropperMinHeight > 0) {
-            this.cropperScaledMinHeight = Math.max(20, this.cropperMinHeight / this.originalImage.height * this.maxSize.height);
-        } else {
-            this.cropperScaledMinHeight = 20;
+        if (this.originalImage && this.cropperMaxWidth > 0) {
+            this.cropperScaledMaxWidth = Math.max(20, this.cropperMaxWidth / this.originalImage.width * this.maxSize.width);
+            this.cropperScaledMaxHeight = this.maintainAspectRatio
+                ? Math.max(20, this.cropperScaledMaxWidth / this.aspectRatio)
+                : this.cropperMaxHeight / this.originalImage.height * this.maxSize.height;
         }
     }
 
@@ -512,38 +509,60 @@ export class ImageCropperComponent implements OnChanges {
         const diffY = this.getClientY(event) - this.moveStart.clientY;
         switch (this.moveStart.position) {
             case 'left':
-                this.cropper.x1 = Math.min(this.moveStart.x1 + diffX, this.cropper.x2 - this.cropperScaledMinWidth);
+            this.cropper.x1 = this.getPositionEnforceMinMax(this.moveStart.x1, diffX, this.cropper.x2, -this.cropperScaledMinWidth, -this.cropperScaledMaxWidth, true);
                 break;
             case 'topleft':
-                this.cropper.x1 = Math.min(this.moveStart.x1 + diffX, this.cropper.x2 - this.cropperScaledMinWidth);
-                this.cropper.y1 = Math.min(this.moveStart.y1 + diffY, this.cropper.y2 - this.cropperScaledMinHeight);
+                this.cropper.x1 = this.getPositionEnforceMinMax(this.moveStart.x1, diffX, this.cropper.x2, -this.cropperScaledMinWidth, -this.cropperScaledMaxWidth, true);
+                this.cropper.y1 = this.getPositionEnforceMinMax(this.moveStart.y1, diffY, this.cropper.y2, -this.cropperScaledMinWidth, -this.cropperScaledMaxWidth, true);
                 break;
             case 'top':
-                this.cropper.y1 = Math.min(this.moveStart.y1 + diffY, this.cropper.y2 - this.cropperScaledMinHeight);
+                this.cropper.y1 = this.getPositionEnforceMinMax(this.moveStart.y1, diffY, this.cropper.y2, -this.cropperScaledMinWidth, -this.cropperScaledMaxWidth, true);
                 break;
             case 'topright':
-                this.cropper.x2 = Math.max(this.moveStart.x2 + diffX, this.cropper.x1 + this.cropperScaledMinWidth);
-                this.cropper.y1 = Math.min(this.moveStart.y1 + diffY, this.cropper.y2 - this.cropperScaledMinHeight);
+                this.cropper.y1 = this.getPositionEnforceMinMax(this.moveStart.y1, diffY, this.cropper.y2, -this.cropperScaledMinWidth, -this.cropperScaledMaxWidth, true);
+                this.cropper.x2 = this.getPositionEnforceMinMax(this.moveStart.x2, diffX, this.cropper.x1, this.cropperScaledMinWidth, this.cropperScaledMaxWidth, false);
                 break;
             case 'right':
-                this.cropper.x2 = Math.max(this.moveStart.x2 + diffX, this.cropper.x1 + this.cropperScaledMinWidth);
+                this.cropper.x2 = this.getPositionEnforceMinMax(this.moveStart.x2, diffX, this.cropper.x1, this.cropperScaledMinWidth, this.cropperScaledMaxWidth, false);
                 break;
             case 'bottomright':
-                this.cropper.x2 = Math.max(this.moveStart.x2 + diffX, this.cropper.x1 + this.cropperScaledMinWidth);
-                this.cropper.y2 = Math.max(this.moveStart.y2 + diffY, this.cropper.y1 + this.cropperScaledMinHeight);
+                this.cropper.x2 = this.getPositionEnforceMinMax(this.moveStart.x2, diffX, this.cropper.x1, this.cropperScaledMinWidth, this.cropperScaledMaxWidth, false);
+                this.cropper.y2 = this.getPositionEnforceMinMax(this.moveStart.y2, diffY, this.cropper.y1, this.cropperScaledMinHeight, this.cropperScaledMaxHeight, false);
                 break;
             case 'bottom':
-                this.cropper.y2 = Math.max(this.moveStart.y2 + diffY, this.cropper.y1 + this.cropperScaledMinHeight);
+                this.cropper.y2 = this.getPositionEnforceMinMax(this.moveStart.y2, diffY, this.cropper.y1, this.cropperScaledMinHeight, this.cropperScaledMaxHeight, false);
                 break;
             case 'bottomleft':
-                this.cropper.x1 = Math.min(this.moveStart.x1 + diffX, this.cropper.x2 - this.cropperScaledMinWidth);
-                this.cropper.y2 = Math.max(this.moveStart.y2 + diffY, this.cropper.y1 + this.cropperScaledMinHeight);
+                this.cropper.x1 = this.getPositionEnforceMinMax(this.moveStart.x1, diffX, this.cropper.x2, -this.cropperScaledMinWidth, -this.cropperScaledMaxWidth, true);
+                this.cropper.y2 = this.getPositionEnforceMinMax(this.moveStart.y2, diffY, this.cropper.y1, this.cropperScaledMinHeight, this.cropperScaledMaxHeight, false);
                 break;
         }
 
         if (this.maintainAspectRatio) {
             this.checkAspectRatio();
         }
+    }
+
+    private getPositionEnforceMinMax(startPos: number, change: number, referencePos: number, min: number, max: number, rightToLeft: boolean) {
+        let endPos: number = startPos + change;
+        const minPos = referencePos + min;
+        const maxPos = referencePos + max;
+
+        if (rightToLeft) {
+            if (endPos > minPos && min !== 0){
+                endPos = minPos;
+            } else if (endPos < maxPos && max !== 0) {
+                endPos = maxPos;
+            }
+        } else {
+            if (endPos < minPos && min !== 0){
+                endPos = minPos;
+            } else if (endPos > maxPos && max !== 0) {
+                endPos = maxPos;
+            }
+        }
+
+        return endPos;
     }
 
     private checkAspectRatio(): void {
