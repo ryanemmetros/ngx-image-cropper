@@ -635,16 +635,30 @@ export class ImageCropperComponent implements OnChanges {
         }
     }
 
-    crop(outputType: OutputType = this.outputType): ImageCroppedEvent | Promise<ImageCroppedEvent> | null {
+    crop(outputType: OutputType = this.outputType, maxWidth?: number, maxHeight?: number): ImageCroppedEvent | Promise<ImageCroppedEvent> | null {
         if (this.sourceImage.nativeElement && this.originalImage != null) {
             this.startCropImage.emit();
             const imagePosition = this.getImagePosition();
             const width = imagePosition.x2 - imagePosition.x1;
             const height = imagePosition.y2 - imagePosition.y1;
 
+            let cropWidth: number = width;
+            let cropHeight: number = height;
+            const aspectRatio = width / height;
+
+            if (maxWidth && maxWidth != 0 && cropWidth > maxWidth) {
+                cropWidth = maxWidth;
+                cropHeight = cropWidth / aspectRatio;
+            }
+
+            if (maxHeight && maxWidth != 0 && cropHeight > maxHeight) {
+                cropHeight = maxHeight;
+                cropWidth = cropHeight * aspectRatio;
+            }
+
             const cropCanvas = document.createElement('canvas') as HTMLCanvasElement;
-            cropCanvas.width = width;
-            cropCanvas.height = height;
+            cropCanvas.width = cropWidth;
+            cropCanvas.height = cropHeight;
 
             const ctx = cropCanvas.getContext('2d');
             if (ctx) {
@@ -656,8 +670,8 @@ export class ImageCropperComponent implements OnChanges {
                     height,
                     0,
                     0,
-                    width,
-                    height
+                    cropWidth,
+                    cropHeight
                 );
 
                 const output = {width, height, imagePosition, cropperPosition: {...this.cropper}};
