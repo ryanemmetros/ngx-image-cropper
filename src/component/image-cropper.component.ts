@@ -28,6 +28,7 @@ export class ImageCropperComponent implements OnChanges {
     
     private pinchActive: boolean = false
     private pinchZoomInitialScale: number = 1;
+    private pinchInitialCenter: any = null;
 
     private imageScale = 1;
     private imageTranslateX = 0;
@@ -230,8 +231,13 @@ export class ImageCropperComponent implements OnChanges {
 
     onPinch(evt: any) {
         if (this.pinchActive) {
+
+            if (this.pinchInitialCenter === null) {
+                this.pinchInitialCenter = { x: evt.center.x, y: evt.center.y}
+            }
+
             // do the actual scaling of the image, call function to scale
-            this.zoomImage(true, this.pinchZoomInitialScale * evt.scale, evt.center.x, evt.center.y);
+            this.zoomImage(true, this.pinchZoomInitialScale * evt.scale, this.pinchInitialCenter.x, this.pinchInitialCenter.y);
         }
     }
 
@@ -247,11 +253,21 @@ export class ImageCropperComponent implements OnChanges {
         // set that we have ended pinching
         this.pinchActive = false;
         this.pinchZoomInitialScale = 1;
+        this.pinchInitialCenter = null;
+    }
+
+    onPan(evt: any) {
+        const imageOffset = this.getOffsetInfo(this.sourceImage);
+        const zoomWindowOffset = this.getOffsetInfo(this.zoomWindow);
+
+        this.imageTranslateX += (this.getXTranslation((evt.deltaX / 10), zoomWindowOffset, imageOffset) / this.imageScale);
+        this.imageTranslateY += (this.getYTranslation((evt.deltaY / 10), zoomWindowOffset, imageOffset) / this.imageScale);    
     }
 
     reset() {
         this.pinchZoomInitialScale = 1;
         this.pinchActive = false;
+        this.pinchInitialCenter = null;
         this.imageScale = 1;
         this.imageTranslateX = 0;
         this.imageTranslateY = 0;
@@ -453,45 +469,58 @@ export class ImageCropperComponent implements OnChanges {
         let translateX = Math.ceil(zoomPosX / 10) * (isZoomIn ? -1 : 1);
         let translateY = Math.ceil(zoomPosY / 10) * (isZoomIn ? 1 : -1);
 
-        // check the amount that the child would translate against top/bottom/right/left to make sure it does not go passed min
-        // if it does then set the translate to be 
+        translationAmounts.X = this.getXTranslation(translateX, parentElement, childElement);
+        translationAmounts.Y = this.getYTranslation(translateY, parentElement, childElement);
+
+        return translationAmounts;
+    }
+
+    private getXTranslation(translateX: number, parentElement: ElementPosition, childElement: ElementPosition) {
+        let x = 0;
+        
         if (translateX < 0) {
             let rightPosDifference = parentElement.right - childElement.right;
 
             if (rightPosDifference - translateX > 0) {
-                translationAmounts.X = rightPosDifference;
+                x = rightPosDifference;
             } else {
-                translationAmounts.X = translateX;
+                x = translateX;
             }
         } else if (translateX > 0) {
             let leftPosDifference = parentElement.left - childElement.left;
 
             if (leftPosDifference - translateX < 0) {
-                translationAmounts.X = leftPosDifference;
+                x = leftPosDifference;
             } else {
-                translationAmounts.X = translateX;
+                x = translateX;
             }
         }
 
-        if (translateY > 0) {
-            let topPosDifference = parentElement.top - childElement.top;
+        return x;
+    }
 
-            if (topPosDifference - translateY < 0) {
-                translationAmounts.Y = topPosDifference;
-            } else {
-                translationAmounts.Y = translateY;
-            }
-        } else if (translateY < 0) {
+    private getYTranslation(translateY: number, parentElement: ElementPosition, childElement: ElementPosition) {
+        let y = 0;
+        
+        if (translateY < 0) {
             let bottomPosDifference = parentElement.bottom - childElement.bottom;
 
             if (bottomPosDifference - translateY > 0) {
-                translationAmounts.Y = bottomPosDifference;
+                y = bottomPosDifference;
             } else {
-                translationAmounts.Y = translateY;
+                y = translateY;
             }
-        }
+        } else if (translateY > 0) {
+            let topPosDifference = parentElement.top - childElement.top;
 
-        return translationAmounts;
+            if (topPosDifference - translateY < 0) {
+                y = topPosDifference;
+            } else {
+                y = translateY;
+            }
+        } 
+
+        return y;
     }
 
     private move(event: any) {
