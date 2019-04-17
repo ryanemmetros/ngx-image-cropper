@@ -88,6 +88,7 @@
          [style.height.px]="maxSize.height"
          [style.margin-left]="alignImage === 'center' ? marginLeft : null"
          [style.visibility]="imageVisible ? 'visible' : 'hidden'"
+         (mousedown)="startMove($event, 'pan')"
          (wheel)="zoomScrollWheel($event)"
          (pinchstart)="onPinchStart($event)"
          (pinchend)="onPinchEnd($event)"
