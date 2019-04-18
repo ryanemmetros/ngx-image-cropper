@@ -32,8 +32,10 @@ export class ImageCropperComponent implements OnChanges {
     private imageScale = 1;
     private imageTranslateX = 0;
     private imageTranslateY = 0;
+    private EXIF = (window as any).EXIF;
+    private imageRotate = 0;
     get imageTransform(): SafeStyle {
-        return this.sanitizer.bypassSecurityTrustStyle(`scale(${this.imageScale}) translate(${this.imageTranslateX}px, ${this.imageTranslateY}px)`);
+        return this.sanitizer.bypassSecurityTrustStyle(`scale(${this.imageScale}) translate(${this.imageTranslateX}px, ${this.imageTranslateY}px) rotate(${this.imageRotate}deg)`);
     }
     
     maxSize: Dimensions;
@@ -153,9 +155,21 @@ export class ImageCropperComponent implements OnChanges {
         fileReader.onload = (event: any) => {
             const imageType = file.type;
             if (this.isValidImageType(imageType)) {
-                resetExifOrientation(event.target.result)
-                    .then((resultBase64: string) => this.loadBase64Image(resultBase64))
-                    .catch(() => this.loadImageFailed.emit());
+                if (this.EXIF !== undefined){
+                    var cropper = this;
+                    this.EXIF.getData(file, function(imageData: any){
+                        console.log(this);
+                        if (this.exifdata && this.exifdata.Orientation) {
+                            transformBase64BasedOnExifRotation(event.target.result, this.exifdata.Orientation)
+                            .then((resultBase64: string) => cropper.loadBase64Image(resultBase64))
+                            .catch(() => cropper.loadImageFailed.emit());
+                        }
+                    });
+                } else {
+                    resetExifOrientation(event.target.result)
+                        .then((resultBase64: string) => this.loadBase64Image(resultBase64))
+                        .catch(() => this.loadImageFailed.emit());
+                }
             } else {
                 this.loadImageFailed.emit();
             }
@@ -175,10 +189,47 @@ export class ImageCropperComponent implements OnChanges {
         this.originalImage.onload = () => {
             this.originalSize.width = this.originalImage.width;
             this.originalSize.height = this.originalImage.height;
+            
             this.cd.markForCheck();
         };
         this.originalImage.src = imageBase64;
     }
+
+    /* 
+    private loadImageFile(file: File): void {
+        const fileReader = new FileReader();
+        fileReader.onload = (event: any) => {
+            const imageType = file.type;
+            if (this.isValidImageType(imageType)) {
+                this.loadBase64Image(event.target.result);
+            } else {
+                this.loadImageFailed.emit();
+            }
+        };
+        fileReader.readAsDataURL(file);
+    }
+
+    private isValidImageType(type: string): boolean {
+        return /image\/(png|jpg|jpeg|bmp|gif|tiff)/.test(type);
+    }
+
+    private loadBase64Image(imageBase64: string): void {
+        resetExifOrientation(imageBase64)
+            .then((resultBase64: string) => {
+                this.originalBase64 = resultBase64;
+                this.safeImgDataUrl = this.sanitizer.bypassSecurityTrustResourceUrl(resultBase64);
+                this.originalImage = new Image();
+                this.originalImage.crossOrigin = "anonymous";
+                this.originalImage.onload = () => {
+                    this.originalSize.width = this.originalImage.width;
+                    this.originalSize.height = this.originalImage.height;
+                    this.cd.markForCheck();
+                };
+                this.originalImage.src = resultBase64;
+            })
+            .catch(() => this.loadImageFailed.emit());
+    }
+    */
 
     imageLoadedInView(): void {
         if (this.originalImage != null) {
