@@ -611,12 +611,10 @@ export class ImageCropperComponent implements OnChanges {
     }
 
     private validateAspectRatio(x1: number, x2: number, y1: number, y2: number) {
-        console.log(`X1:${x1}    X2:${x2}    Y1:${y1}    Y2:${y2}`);
         // check if we are going to violate the min/max aspect ratio
         const newAspectRatio = (x2 - x1) / (y2 - y1);
-        console.log(`New aspect: ${newAspectRatio}`);
 
-        if ((this.cropperMinAspectRatio != 0 && newAspectRatio < this.cropperMinAspectRatio) || (this.cropperMaxAspectRatio != 0 && newAspectRatio > this.cropperMaxAspectRatio)) {
+        if (!this.maintainAspectRatio && ((this.cropperMinAspectRatio != 0 && newAspectRatio < this.cropperMinAspectRatio) || (this.cropperMaxAspectRatio != 0 && newAspectRatio > this.cropperMaxAspectRatio))) {
             return false;
         }
 
