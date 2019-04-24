@@ -4,7 +4,7 @@ import {
 } from '@angular/core';
 import { DomSanitizer, SafeUrl, SafeStyle } from '@angular/platform-browser';
 import { MoveStart, Dimensions, CropperPosition, ImageCroppedEvent, ElementPosition } from '../interfaces';
-import { resetExifOrientation, transformBase64BasedOnExifRotation } from '../utils/exif.utils';
+import { resetExifOrientation, transformBase64BasedOnExifRotation, transformBase64BlobBasedOnExifRotation } from '../utils/exif.utils';
 import { resizeCanvas } from '../utils/resize.utils';
 
 export type OutputType = 'base64' | 'file' | 'both';
@@ -227,11 +227,11 @@ export class ImageCropperComponent implements OnChanges {
     }
 
     rotateLeft() {
-        this.transformBase64(8);
+        this.transformImageToBlob(8);
     }
 
     rotateRight() {
-        this.transformBase64(6);
+        this.transformImageToBlob(6);
     }
 
     flipHorizontal() {
@@ -240,6 +240,13 @@ export class ImageCropperComponent implements OnChanges {
 
     flipVertical() {
         this.transformBase64(4);
+    }
+
+    transformImageToBlob(exif: number) {
+        transformBase64BlobBasedOnExifRotation(this.originalBase64, exif).then((imageBlob: Blob) => {
+            const url = window.URL.createObjectURL(imageBlob);
+            this.loadBase64Image(url);
+        });
     }
 
     onPinch(evt: any) {
@@ -293,7 +300,9 @@ export class ImageCropperComponent implements OnChanges {
     private transformBase64(exifOrientation: number): void {
         if (this.originalBase64) {
             transformBase64BasedOnExifRotation(this.originalBase64, exifOrientation)
-                .then((rotatedBase64: string) => this.loadBase64Image(rotatedBase64));
+                .then((rotatedBase64: string) => {
+                    this.loadBase64Image(rotatedBase64)
+                });
         }
     }
 
@@ -363,8 +372,6 @@ export class ImageCropperComponent implements OnChanges {
                 this.resize(event);
                 this.checkCropperPosition(false);
             } else if (this.moveStart.type === 'pan') {
-                //console.log(`MovementX:${event.movementX}    MovementY:${event.movementY} `)
-
                 this.pan(event.movementX, event.movementY);
             }
             this.cd.detectChanges();

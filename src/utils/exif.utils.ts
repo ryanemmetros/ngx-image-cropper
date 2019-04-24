@@ -40,6 +40,41 @@ export function transformBase64BasedOnExifRotation(srcBase64: string, exifRotati
     });
 }
 
+export function transformBase64BlobBasedOnExifRotation(srcBase64: string, exifRotation: number): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = function () {
+            const width = img.width;
+            const height = img.height;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (ctx) {
+                if (4 < exifRotation && exifRotation < 9) {
+                    canvas.width = height;
+                    canvas.height = width;
+                } else {
+                    canvas.width = width;
+                    canvas.height = height;
+                }
+                transformCanvas(ctx, exifRotation, width, height);
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob(function(blob){
+                    if (blob != null) {
+                        resolve(blob as Blob);
+                    } else {
+                        reject(new Error('Could not convert to blob'));
+                    }
+                }, 'image/jpeg', 0.9);
+            } else {
+                reject(new Error('No context'));
+            }
+        };
+        img.src = srcBase64;
+    });
+}
+
 function getExifRotation(imageBase64: string): number {
     const view = new DataView(base64ToArrayBuffer(imageBase64));
     if (view.getUint16(0, false) != 0xFFD8) {
