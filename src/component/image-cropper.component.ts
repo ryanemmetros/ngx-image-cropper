@@ -41,6 +41,7 @@ export class ImageCropperComponent implements OnChanges {
     maxSize: Dimensions;
 
     safeImgDataUrl: SafeUrl | string;
+    resetImgDataUrl: string;
     marginLeft: SafeStyle | string = '0px';
     imageVisible = false;
 
@@ -157,12 +158,10 @@ export class ImageCropperComponent implements OnChanges {
             if (this.isValidImageType(imageType)) {
                 if (this.EXIF !== undefined){
                     var cropper = this;
-                    this.EXIF.getData(file, function(imageData: any){
-                        if (this.exifdata && this.exifdata.Orientation) {
-                            transformBase64BasedOnExifRotation(event.target.result, this.exifdata.Orientation)
-                            .then((resultBase64: string) => cropper.loadBase64Image(resultBase64))
-                            .catch(() => cropper.loadImageFailed.emit());
-                        }
+                    this.EXIF.getData(file, function(imageData: any){                        
+                        transformBase64BasedOnExifRotation(event.target.result, this.exifdata && this.exifdata.Orientation ? this.exifdata.Orientation: 0)
+                        .then((resultBase64: string) => cropper.loadBase64Image(resultBase64))
+                        .catch(() => cropper.loadImageFailed.emit());
                     });
                 } else {
                     resetExifOrientation(event.target.result)
@@ -183,6 +182,12 @@ export class ImageCropperComponent implements OnChanges {
     private loadBase64Image(imageBase64: string): void {
         this.originalBase64 = imageBase64;
         this.safeImgDataUrl = this.sanitizer.bypassSecurityTrustResourceUrl(imageBase64);
+
+        if (!this.resetImgDataUrl) {
+            console.log(imageBase64)
+            this.resetImgDataUrl = imageBase64;
+        }
+
         this.originalImage = new Image();
         this.originalImage.crossOrigin = "anonymous";
         this.originalImage.onload = () => {
@@ -295,6 +300,12 @@ export class ImageCropperComponent implements OnChanges {
         this.imageScale = 1;
         this.imageTranslateX = 0;
         this.imageTranslateY = 0;
+
+        if (this.resetImgDataUrl) {
+            console.log(this.resetImgDataUrl)
+            this.safeImgDataUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.resetImgDataUrl);
+            this.originalBase64 = this.resetImgDataUrl;
+        }
     }
 
     private transformBase64(exifOrientation: number): void {
