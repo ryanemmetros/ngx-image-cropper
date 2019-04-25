@@ -302,9 +302,7 @@ export class ImageCropperComponent implements OnChanges {
         this.imageTranslateY = 0;
 
         if (this.resetImgDataUrl) {
-            console.log(this.resetImgDataUrl)
-            this.safeImgDataUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.resetImgDataUrl);
-            this.originalBase64 = this.resetImgDataUrl;
+            this.loadBase64Image(this.resetImgDataUrl);
         }
     }
 
