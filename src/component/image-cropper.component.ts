@@ -1,6 +1,6 @@
 import {
     Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnChanges, Output,
-    SimpleChanges, ChangeDetectorRef, ChangeDetectionStrategy, NgZone, ViewChild
+    SimpleChanges, ChangeDetectorRef, ChangeDetectionStrategy, NgZone, ViewChild, QueryList, ViewChildren
 } from '@angular/core';
 import { DomSanitizer, SafeUrl, SafeStyle } from '@angular/platform-browser';
 import { MoveStart, Dimensions, CropperPosition, ImageCroppedEvent, ElementPosition } from '../interfaces';
@@ -47,6 +47,7 @@ export class ImageCropperComponent implements OnChanges {
 
     @ViewChild('zoomWindow') zoomWindow: ElementRef;
     @ViewChild('sourceImage') sourceImage: ElementRef;
+    @ViewChildren('square') touchTargets:QueryList<ElementRef>;
 
     @Input()
     set imageFileChanged(file: File) {
@@ -184,7 +185,6 @@ export class ImageCropperComponent implements OnChanges {
         this.safeImgDataUrl = this.sanitizer.bypassSecurityTrustResourceUrl(imageBase64);
 
         if (!this.resetImgDataUrl) {
-            console.log(imageBase64)
             this.resetImgDataUrl = imageBase64;
         }
 
@@ -395,11 +395,27 @@ export class ImageCropperComponent implements OnChanges {
     }
 
     private setCropperScaledMinSize(): void {
+        // calc min width/height for the large crop target which will override the passed in px if it is larger
+        let largestWidthTouchTarget = 0;
+        let largestHeightTouchTarget = 0;
+
+        this.touchTargets.forEach((target) => {
+            const width = target.nativeElement.offsetWidth;
+            const height = target.nativeElement.offsetHeight;
+            if (width > largestWidthTouchTarget) {
+                largestWidthTouchTarget = width;
+            }
+            
+            if (height > largestHeightTouchTarget) {
+                largestHeightTouchTarget = height;
+            }
+        });
+
         if (this.originalImage && this.cropperMinWidth > 0) {
-            this.cropperScaledMinWidth = Math.max(20, this.cropperMinWidth / this.originalImage.width * this.maxSize.width);
+            this.cropperScaledMinWidth = Math.max(20, this.cropperMinWidth / this.originalImage.width * this.maxSize.width, largestWidthTouchTarget);
             this.cropperScaledMinHeight = this.maintainAspectRatio
-                ? Math.max(20, this.cropperScaledMinWidth / this.aspectRatio)
-                : this.cropperMinHeight / this.originalImage.height * this.maxSize.height;
+                ? Math.max(20, this.cropperScaledMinWidth / this.aspectRatio, largestHeightTouchTarget)
+                : Math.max(this.cropperMinHeight / this.originalImage.height * this.maxSize.height, largestHeightTouchTarget);
         } else {
             this.cropperScaledMinWidth = 20;
             this.cropperScaledMinHeight = 20;
